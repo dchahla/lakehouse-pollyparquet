@@ -1,0 +1,18 @@
+version: 2
+sources:
+  - name: bronze
+    schema: bronze
+    tables:
+      - name: crm_customers
+      - name: billing_invoices
+
+# ------------------------------------------------------------------------------------------------
+# Glossary
+#   sources.yml   Declares raw upstream tables so models reference them via source(name, table).
+#   version: 2    dbt schema-file format version (current standard).
+#   sources:      List of source systems (here, the bronze layer).
+#   name          Logical source name used in source('bronze', ...).
+#   schema        Physical schema/namespace the tables live in (bronze).
+#   tables:       The specific raw tables exposed to models (dependency + lineage tracking).
+#   Why declare?  Gives dbt lineage, freshness checks, and a single place to remap raw locations.
+# ------------------------------------------------------------------------------------------------

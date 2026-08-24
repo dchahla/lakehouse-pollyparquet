@@ -1,0 +1,40 @@
+# terraform
+infra/.terraform/
+infra/*.tfstate
+infra/*.tfstate.*
+infra/.terraform.lock.hcl
+
+# python
+__pycache__/
+*.pyc
+.venv/
+
+# dbt
+dbt/target/
+dbt/dbt_packages/
+dbt/logs/
+
+# spark / data
+spark-warehouse/
+checkpoints/
+data/
+*.log
+.DS_Store
+
+# bench-land-bronze (sub-repo with own git history)
+bench-land-bronze/
+
+# ---------------------------------------------------------------------------------------------
+# Glossary — why each entry is ignored
+#   .terraform/        Provider binaries/cache; large, machine-specific, re-downloaded by init.
+#   *.tfstate*         Terraform state; may hold secrets and is environment-specific — never commit.
+#   .terraform.lock.hcl Provider lock file (committed in real projects; ignored here to stay tight).
+#   __pycache__/,*.pyc Python bytecode caches; regenerated on run.
+#   .venv/             Local Python virtualenv; recreated from requirements.
+#   dbt/target/        dbt compiled SQL + run artifacts; build output.
+#   dbt/dbt_packages/  Third-party dbt packages; fetched by `dbt deps`.
+#   spark-warehouse/   Spark's local table dir; runtime data.
+#   checkpoints/       Structured Streaming WAL/state; runtime, not source.
+#   data/              Generated sample source files; reproducible via src/generate.py.
+#   .DS_Store          macOS Finder metadata; noise.
+# ---------------------------------------------------------------------------------------------

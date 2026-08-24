@@ -1,0 +1,23 @@
+name: floci
+version: "1.0"
+profile: floci
+# ELT: the transform runs INSIDE the lakehouse on Trino, not in a pre-load tier.
+model-paths: ["models"]
+snapshot-paths: ["snapshots"]
+models:
+  floci:
+    gold:
+      +materialized: table       # marts serve BI + ML from one copy
+
+# ------------------------------------------------------------------------------------------------
+# Glossary
+#   dbt                 Data Build Tool; runs SQL SELECTs as managed, tested, dependency-ordered models.
+#   dbt_project.yml     Root project config dbt reads to find models/snapshots + defaults.
+#   profile             Named connection config (in profiles.yml) telling dbt which warehouse to hit.
+#   model-paths         Directories dbt scans for models (SELECT statements it materializes).
+#   snapshot-paths      Directories dbt scans for snapshots (SCD2 history builders).
+#   +materialized       How a model is built: view / table / incremental / ephemeral.
+#     table             Persist results as a physical table (used for gold marts here).
+#   ELT                 Transform runs inside the warehouse (Trino) after raw load; dbt's model.
+#   ref() / source()    dbt functions that wire model dependencies + resolve raw source tables.
+# ------------------------------------------------------------------------------------------------

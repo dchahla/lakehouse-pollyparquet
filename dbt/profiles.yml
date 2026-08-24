@@ -1,0 +1,25 @@
+# Self-contained profile: run dbt with `dbt run --profiles-dir .`
+floci:
+  target: local
+  outputs:
+    local:
+      type: trino
+      host: localhost
+      port: 8080
+      user: floci
+      catalog: lake
+      schema: gold
+      threads: 4
+
+# ------------------------------------------------------------------------------------------------
+# Glossary
+#   profiles.yml   Connection config dbt uses to reach the warehouse (kept in-repo for portability).
+#   profile name   Must match `profile:` in dbt_project.yml (floci).
+#   target         The active output config (local); switch with `dbt run --target ...`.
+#   outputs        Named connection definitions (dev/prod/local).
+#   type: trino    Use the dbt-trino adapter to run models on Trino.
+#   host/port      Where Trino listens (localhost:8080 from docker-compose).
+#   catalog        Trino catalog = the Iceberg "lake" catalog (maps to Nessie).
+#   schema         Default namespace dbt builds into (gold).
+#   threads        Max models dbt builds in parallel.
+# ------------------------------------------------------------------------------------------------

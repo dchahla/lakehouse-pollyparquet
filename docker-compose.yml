@@ -1,0 +1,87 @@
+# Tight local lakehouse: object storage + Iceberg REST catalog + decoupled engines.
+services:
+  minio:                                   # S3-compatible object storage
+    image: minio/minio:latest
+    command: server /data --console-address ":9001"
+    environment:
+      MINIO_ROOT_USER: minio
+      MINIO_ROOT_PASSWORD: minio123
+    ports: ["9000:9000", "9001:9001"]
+
+  nessie:                                  # Iceberg REST catalog (git-like)
+    image: ghcr.io/projectnessie/nessie:latest
+    environment:
+      nessie.version.store.type: IN_MEMORY
+      nessie.catalog.default-warehouse: warehouse
+      nessie.catalog.warehouses.warehouse.location: s3://warehouse/
+      nessie.catalog.service.s3.default-options.endpoint: http://minio:9000
+      nessie.catalog.service.s3.default-options.path-style-access: "true"
+      nessie.catalog.service.s3.default-options.region: us-east-1
+      # BASIC secret must resolve to <path>.name + <path>.secret.
+      nessie.catalog.service.s3.default-options.access-key: urn:nessie-secret:quarkus:nessie.catalog.secrets.access-key
+      nessie.catalog.secrets.access-key.name: minio
+      nessie.catalog.secrets.access-key.secret: minio123
+    ports: ["19120:19120"]
+    depends_on: [minio]
+
+  kafka:                                   # replayable source for the exactly-once stream
+    image: apache/kafka:3.7.1
+    ports: ["9092:9094"]                   # host producer -> localhost:9092 (mapped to the HOST listener)
+    environment:
+      KAFKA_NODE_ID: 1
+      KAFKA_PROCESS_ROLES: broker,controller
+      KAFKA_CONTROLLER_QUORUM_VOTERS: 1@kafka:9093
+      # Two client listeners: INTERNAL for containers (kafka:9092), HOST for the host producer (localhost:9092).
+      KAFKA_LISTENERS: INTERNAL://0.0.0.0:9092,CONTROLLER://0.0.0.0:9093,HOST://0.0.0.0:9094
+      KAFKA_ADVERTISED_LISTENERS: INTERNAL://kafka:9092,HOST://localhost:9092
+      KAFKA_LISTENER_SECURITY_PROTOCOL_MAP: INTERNAL:PLAINTEXT,CONTROLLER:PLAINTEXT,HOST:PLAINTEXT
+      KAFKA_CONTROLLER_LISTENER_NAMES: CONTROLLER
+      KAFKA_INTER_BROKER_LISTENER_NAME: INTERNAL
+      KAFKA_OFFSETS_TOPIC_REPLICATION_FACTOR: 1
+      KAFKA_TRANSACTION_STATE_LOG_REPLICATION_FACTOR: 1
+      KAFKA_TRANSACTION_STATE_LOG_MIN_ISR: 1
+      KAFKA_GROUP_INITIAL_REBALANCE_DELAY_MS: 0
+
+  spark:                                   # batch + streaming engine (the Must-Have)
+    image: apache/spark:3.5.1
+    entrypoint: ["tail", "-f", "/dev/null"]
+    volumes: ["./:/work"]
+    working_dir: /work
+    environment:
+      SPARK_CONF_DIR: /work/spark/conf     # so spark-submit auto-loads spark-defaults.conf
+      AWS_ACCESS_KEY_ID: minio
+      AWS_SECRET_ACCESS_KEY: minio123
+      AWS_REGION: us-east-1
+    depends_on: [nessie, kafka]
+
+  trino:                                   # warehouse-style query layer over the same tables
+    image: trinodb/trino:latest
+    ports: ["8080:8080"]
+    volumes: ["./trino/catalog:/etc/trino/catalog", "./:/work"]   # /work so `trino --file /work/sql/...` resolves
+    depends_on: [nessie]
+
+# ------------------------------------------------------------------------------------------------
+# Glossary
+#   services            Top-level Compose key; each entry is one container in the stack.
+#   image               Container image to pull/run (name:tag).
+#   command / entrypoint What the container runs on start (entrypoint tail -f keeps spark idle for exec).
+#   environment         Env vars inside the container (credentials, catalog config).
+#   ports "H:C"         Publishes container port C on host port H.
+#   volumes "./x:/y"    Bind-mounts host path ./x into the container at /y (live code + config).
+#   working_dir         Default directory for commands run in the container.
+#   depends_on          Start ordering only (not readiness); nessie waits on minio, etc.
+#
+#   MinIO               S3-compatible object storage. Port 9000 = S3 API, 9001 = web console.
+#   Nessie              Iceberg REST catalog; IN_MEMORY version store keeps the demo stateless.
+#     default-warehouse / warehouses.*.location  Where new Iceberg tables' files are written (s3://warehouse/).
+#     path-style-access   Use s3://host/bucket URLs (required by MinIO) vs. virtual-hosted style.
+#     secrets.access-key.name/.secret  BASIC S3 credential the catalog uses to reach MinIO (referenced by urn).
+#   Kafka               KRaft single-node broker; the replayable source for the streaming demo.
+#     INTERNAL vs HOST listener  kafka:9092 for in-network containers; localhost:9092 for the host producer.
+#     advertised.listeners  Address the broker tells clients to reconnect on (must be reachable by them).
+#   Spark               apache/spark image; batch + streaming engine. tail -f = stay alive for spark-submit.
+#     SPARK_CONF_DIR    Where Spark looks for spark-defaults.conf (bind-mounted at /work/spark/conf).
+#     spark.jars.packages  Iceberg + AWS bundle jars pulled at submit (not baked into the base image).
+#     AWS_ACCESS_KEY_ID/SECRET  S3 creds Spark's S3 client uses to reach MinIO.
+#   Trino               Distributed SQL engine; reads the SAME Iceberg tables (catalog mounted at /etc/trino/catalog).
+# ------------------------------------------------------------------------------------------------

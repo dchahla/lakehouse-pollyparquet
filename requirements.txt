@@ -1,0 +1,18 @@
+# Host-side Python. Everything else runs in containers.
+#
+#   python3 -m venv .venv && source .venv/bin/activate
+#   pip install -r requirements.txt
+#
+# dbt talks to Trino over HTTP; it does not need Spark or a JVM locally.
+# kafka-python is only imported by `--mode stream`, but installing it up front
+# saves you discovering that an hour in.
+
+dbt-core>=1.7
+dbt-trino>=1.7
+kafka-python>=2.0
+
+# For src/parquet_anatomy.py. pandas writes the file, pyarrow reads its metadata
+# back; pandas needs pyarrow for to_parquet anyway, so this is one dependency
+# wearing two hats.
+pandas>=2.0
+pyarrow>=15.0
