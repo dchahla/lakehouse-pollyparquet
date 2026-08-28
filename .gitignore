@@ -21,8 +21,8 @@ data/
 *.log
 .DS_Store
 
-# bench-land-bronze (sub-repo with own git history)
-bench-land-bronze/
+# local working notes
+notes/
 
 # ---------------------------------------------------------------------------------------------
 # Glossary — why each entry is ignored
@@ -37,4 +37,6 @@ bench-land-bronze/
 #   checkpoints/       Structured Streaming WAL/state; runtime, not source.
 #   data/              Generated sample source files; reproducible via src/generate.py.
 #   .DS_Store          macOS Finder metadata; noise.
+#   notes/             Local working docs — drafts, runbook, transcripts, blog exports.
+#                      README.md is the only markdown that ships.
 # ---------------------------------------------------------------------------------------------

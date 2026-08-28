@@ -1,0 +1,33 @@
+[package]
+name = "land-bronze"
+version = "1.0.0"
+edition = "2021"
+
+# Phase 2: real Iceberg commit to Nessie/MinIO via iceberg-rust. iceberg pins its own arrow/parquet
+# majors, so we take arrow/parquet from whatever it resolves rather than pinning a fighting version.
+[dependencies]
+# Git dep on a fork of apache/iceberg-rust (branch bench-pin @ e03179f2). Published crates.io 0.10.1
+# ships no S3 StorageFactory — the S3 OpenDalStorageFactory the REST catalog needs to reach MinIO
+# only exists in the iceberg-storage-opendal crate on this newer tree. Self-contained build: Cargo
+# fetches from GitHub, no local checkout/mount. Needs rustc 1.94.
+iceberg = { git = "https://github.com/dchahla/iceberg-rust", branch = "bench-pin" }
+iceberg-catalog-rest = { git = "https://github.com/dchahla/iceberg-rust", branch = "bench-pin" }
+iceberg-storage-opendal = { git = "https://github.com/dchahla/iceberg-rust", branch = "bench-pin" }
+tokio = { version = "1", features = ["macros", "rt-multi-thread"] }
+# Match the arrow/parquet major iceberg-rust uses (58), so there's one arrow in the tree. Pinning
+# an older major pulls a second arrow that won't compile against iceberg's newer chrono.
+arrow = "58"
+parquet = { version = "58", features = ["zstd"] }
+chrono = "0.4"
+libc = "0.2"
+serde = { version = "1", features = ["derive"] }
+serde_json = "1"
+uuid = { version = "1", features = ["v4"] }
+
+[[bin]]
+name = "land-bronze"
+path = "src/main.rs"
+
+[profile.release]
+# The benchmark times the release binary; keep the optimizer on.
+opt-level = 3

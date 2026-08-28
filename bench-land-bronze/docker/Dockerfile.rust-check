@@ -1,0 +1,14 @@
+# Fast type-check loop for iterating on the iceberg-rust API without paying the full optimized
+# build (arrow/parquet take ~30 min in release). `cargo check` type-checks in a couple minutes and,
+# once deps are compiled and layer-cached, a source-only change re-checks in seconds.
+FROM rust:1.94
+
+WORKDIR /build
+
+# Prime the dependency cache with a stub main, so editing src/main.rs doesn't recompile deps.
+COPY rust/Cargo.toml ./
+RUN mkdir src && echo 'fn main() {}' > src/main.rs && cargo fetch
+
+# Real check happens at run time (bind-mounted src), not build time, so we don't rebuild the image
+# on every edit: docker run --rm -v $(pwd)/rust:/build land-bronze-rust-check
+CMD ["cargo", "check"]

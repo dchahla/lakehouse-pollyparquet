@@ -1,0 +1,21 @@
+# 1.94 for iceberg-rust's rustc floor. This image is Debian trixie (glibc 2.38+), so the runtime
+# base below must also be trixie — a bookworm runtime (glibc 2.36) can't load a trixie-linked binary.
+FROM rust:1.94 AS build
+
+WORKDIR /build
+COPY rust/ .
+
+RUN cargo build --release
+
+# Runtime base MUST match the build image's Debian release (trixie), or glibc is too old:
+# "version GLIBC_2.38 not found". The arrow/parquet build links glibc, so it's not fully static.
+FROM debian:trixie-slim
+
+# reqwest (iceberg-rust's HTTP client) refuses to build a client with no system CA certs, even for
+# plain-HTTP Nessie: "No CA certificates were loaded from the system". slim has none, so add them.
+RUN apt-get update && apt-get install -y --no-install-recommends ca-certificates \
+    && rm -rf /var/lib/apt/lists/*
+
+COPY --from=build /build/target/release/land-bronze /app/land-bronze
+
+ENTRYPOINT ["/app/land-bronze"]

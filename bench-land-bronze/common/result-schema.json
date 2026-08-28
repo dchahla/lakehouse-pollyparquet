@@ -1,0 +1,105 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "Bronze Landing Benchmark Run Result",
+  "type": "object",
+  "properties": {
+    "impl": {
+      "type": "string",
+      "enum": ["java", "go", "rust", "python-spark"],
+      "description": "Language/implementation identifier"
+    },
+    "run_id": {
+      "type": "string",
+      "description": "UUID for this run"
+    },
+    "started_at": {
+      "type": "string",
+      "format": "date-time",
+      "description": "ISO 8601 timestamp when execution began"
+    },
+    "sources": {
+      "type": "array",
+      "items": {"type": "string"},
+      "description": "List of source names processed (e.g. ['crm_customers', 'web_events'])"
+    },
+    "totals": {
+      "type": "object",
+      "properties": {
+        "wall_ms_excl_startup": {
+          "type": "number",
+          "description": "Wall-clock ms from first work after flag parsing to last commit ack (excludes process startup)"
+        },
+        "wall_ms_incl_startup": {
+          "type": "number",
+          "description": "Total wall-clock ms from OS-reported process start to exit (includes JVM warmup, etc.)"
+        },
+        "rows": {
+          "type": "integer",
+          "description": "Total rows written across all sources"
+        },
+        "bytes_parquet": {
+          "type": "integer",
+          "description": "Total Parquet file bytes written to S3"
+        }
+      },
+      "required": ["wall_ms_excl_startup", "wall_ms_incl_startup", "rows", "bytes_parquet"]
+    },
+    "per_source": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "properties": {
+          "source": {
+            "type": "string",
+            "description": "Source name (e.g. 'crm_customers')"
+          },
+          "read_ms": {
+            "type": "number",
+            "description": "Time to read raw CSV/JSONL files (ms)"
+          },
+          "parquet_write_ms": {
+            "type": "number",
+            "description": "Time to write Parquet and upload to S3 (ms)"
+          },
+          "iceberg_commit_ms": {
+            "type": "number",
+            "description": "Time to commit to Iceberg catalog (ms)"
+          },
+          "rows": {
+            "type": "integer",
+            "description": "Row count for this source"
+          },
+          "bytes_parquet": {
+            "type": "integer",
+            "description": "Parquet file size in bytes"
+          }
+        },
+        "required": ["source", "read_ms", "parquet_write_ms", "iceberg_commit_ms", "rows", "bytes_parquet"]
+      },
+      "description": "Breakdown by source"
+    },
+    "notes": {
+      "type": "string",
+      "description": "Optional caveats (e.g. 'iceberg-rust fallback used raw REST commit')"
+    },
+    "resources": {
+      "type": "object",
+      "properties": {
+        "peak_rss_mb": {
+          "type": "number",
+          "description": "Peak resident memory (MB) from /usr/bin/time -v"
+        },
+        "user_cpu_ms": {
+          "type": "number",
+          "description": "User CPU time (ms) from /usr/bin/time -v"
+        },
+        "sys_cpu_ms": {
+          "type": "number",
+          "description": "System CPU time (ms) from /usr/bin/time -v"
+        }
+      },
+      "description": "Resource usage captured by /usr/bin/time -v wrapper"
+    }
+  },
+  "required": ["impl", "run_id", "started_at", "sources", "totals", "per_source"]
+}

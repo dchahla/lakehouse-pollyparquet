@@ -1,0 +1,19 @@
+results/
+target/
+.gradle/
+build/
+*.class
+.venv/
+__pycache__/
+*.pyc
+.DS_Store
+
+# local working notes — drafts, runbook, transcripts. README.md is the only
+# markdown that ships.
+notes/
+
+# go build output
+go/land-bronze
+
+# rust build output
+rust/target/
